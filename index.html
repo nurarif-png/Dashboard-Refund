@@ -329,7 +329,7 @@ details.more div{margin-top:4px;color:var(--ink-2);font-size:12.5px;line-height:
   </div>
   <div class="side-foot">
     <div class="avatar">NA</div>
-    <div><b>CS Operations</b><small>Snapshot 17 Oktober 2026<br>Akses privat</small></div>
+    <div><b>CS Operations</b><small>Live · Supabase<br>Auto-sync 17:25 WIB</small></div>
   </div>
 </aside>
 <div class="scrim" id="scrim"></div>
@@ -455,10 +455,10 @@ details.more div{margin-top:4px;color:var(--ink-2);font-size:12.5px;line-height:
 
     <details class="card method">
       <summary><i data-ico="info"></i>Definisi metrik dan catatan sumber</summary>
-      <div class="methodbody"><p>Snapshot file CS Report data master_Refund user.xlsx yang dilampirkan, bukan koneksi live. Satu baris sumber dihitung sebagai satu kasus; baris kosong dan pemisah tahun dikeluarkan. Tidak dilakukan deduplikasi otomatis atau penggabungan antar-sheet.</p><p>Closed: status utama DONE, Solve, Solved, Closed atau Refunded; jika kosong, memakai status kasus sekunder. Belum closed (kartu): status pending/lainnya ditambah status tidak tercatat. NO dipisahkan sebagai tidak direfund. Total dana refund selesai hanya menjumlahkan nominal dengan Status Refund DONE/Refunded pada Membership dan PPOB, bukan sekadar kasus closed.</p><p>Tanggal mengikuti nilai sumber; teks tanggal menggunakan format hari/bulan/tahun. Tahun yang tidak ditulis dilengkapi dari pemisah tahun pada sheet. Tanggal sebelum 2000 atau setelah tanggal snapshot 17 Oktober 2026 ditandai tidak valid tanpa mengubah sumber. Tanggal kosong/tidak valid tetap dihitung pada semua periode, tetapi tidak masuk filter tanggal atau grafik. Tanggal proses tidak tersedia untuk App, Quickbook, dan Bluecharge.</p><p>Membership: alasan memakai kolom kategori Alasan refund (L), dengan kolom J sebagai detail. Quickbook tidak memiliki kolom nominal; Amount di Parkee App seluruhnya kosong. Bluecharge memakai Charging Fee sebagai nominal refund; penyelesaian pembayaran belum tercatat di sumber. Proses refund EV Bluecharge diproses internal oleh Bluecharge. PARKEE hanya membantu proses follow up data saja. PIC ditampilkan sesuai kolom Assist / Handle By, PIC Bluecharge untuk refund, dan Approval By; nilai sumber dipertahankan. Data pribadi seperti nomor rekening, telepon, dan nama penerima tidak ditampilkan.</p><p>Lokasi dikelompokkan dengan menyamakan huruf besar/kecil dan spasi. Variasi ejaan tidak digabung otomatis. PPOB tidak memiliki kolom lokasi; ringkasannya menampilkan layanan.</p><p>Baris identik: seluruh kolom utama pada sheet sama setelah normalisasi spasi dan huruf. Potensi double input: dalam kategori yang sama, tanggal, lokasi, identitas (plat/tiket/nomor pengguna), dan nominal sama; jika nominal kosong, alasan juga harus sama. Identitas hanya dipakai untuk pengecekan dan tidak ditampilkan. Pemeriksaan ini bukan konfirmasi transaksi ganda dan belum mencocokkan antar-sheet. Semua baris tetap dihitung sampai diverifikasi; baris pembanding bisa berada di luar filter aktif.</p></div>
+      <div class="methodbody"><p>Data live dari Supabase (mirror Google Sheet, sync otomatis tiap hari 17:25 WIB). Satu baris sumber dihitung sebagai satu kasus; baris kosong dan pemisah tahun dikeluarkan. Tidak dilakukan deduplikasi otomatis atau penggabungan antar-sheet.</p><p>Closed: status utama DONE, Solve, Solved, Closed atau Refunded; jika kosong, memakai status kasus sekunder. Belum closed (kartu): status pending/lainnya ditambah status tidak tercatat. NO dipisahkan sebagai tidak direfund. Total dana refund selesai hanya menjumlahkan nominal dengan Status Refund DONE/Refunded pada Membership dan PPOB, bukan sekadar kasus closed.</p><p>Tanggal mengikuti nilai sumber; teks tanggal menggunakan format hari/bulan/tahun. Tahun yang tidak ditulis dilengkapi dari pemisah tahun pada sheet. Tanggal sebelum 2000 atau setelah tanggal snapshot 17 Oktober 2026 ditandai tidak valid tanpa mengubah sumber. Tanggal kosong/tidak valid tetap dihitung pada semua periode, tetapi tidak masuk filter tanggal atau grafik. Tanggal proses tidak tersedia untuk App, Quickbook, dan Bluecharge.</p><p>Membership: alasan memakai kolom kategori Alasan refund (L), dengan kolom J sebagai detail. Quickbook tidak memiliki kolom nominal; Amount di Parkee App seluruhnya kosong. Bluecharge memakai Charging Fee sebagai nominal refund; penyelesaian pembayaran belum tercatat di sumber. Proses refund EV Bluecharge diproses internal oleh Bluecharge. PARKEE hanya membantu proses follow up data saja. PIC ditampilkan sesuai kolom Assist / Handle By, PIC Bluecharge untuk refund, dan Approval By; nilai sumber dipertahankan. Data pribadi seperti nomor rekening, telepon, dan nama penerima tidak ditampilkan.</p><p>Lokasi dikelompokkan dengan menyamakan huruf besar/kecil dan spasi. Variasi ejaan tidak digabung otomatis. PPOB tidak memiliki kolom lokasi; ringkasannya menampilkan layanan.</p><p>Baris identik: seluruh kolom utama pada sheet sama setelah normalisasi spasi dan huruf. Potensi double input: dalam kategori yang sama, tanggal, lokasi, identitas (plat/tiket/nomor pengguna), dan nominal sama; jika nominal kosong, alasan juga harus sama. Identitas hanya dipakai untuk pengecekan dan tidak ditampilkan. Pemeriksaan ini bukan konfirmasi transaksi ganda dan belum mencocokkan antar-sheet. Semua baris tetap dihitung sampai diverifikasi; baris pembanding bisa berada di luar filter aktif.</p></div>
     </details>
 
-    <div class="foot"><span>PARKEE, Refund monitor</span><span>Data dari 5 sheet sumber</span></div>
+    <div class="foot"><span>PARKEE, Refund monitor</span><span>Live · 5 section</span></div>
   </main>
 </div>
 
@@ -695,7 +695,16 @@ $('export').onclick=()=>{const url=URL.createObjectURL(new Blob([makeCSV(detail)
 
 /* ---------- Boot ---------- */
 hydrateIcons();
-Promise.resolve(JSON.parse($('embeddedData').textContent)).then(d=>{
+const SUPA_URL='https://jegvufypvzbtrihvqpzu.supabase.co',SUPA_KEY='sb_publishable_hTrV939MPHFs_OiqkMBiyQ_fG6jmhUy';
+const mapRefund=r=>({category:r.section,row:r.source_row,date:r.tanggal,dateRaw:r.tanggal_raw,input:r.input_date,paid:r.paid_date,location:r.location,reason:r.reason,detail:r.detail,amount:r.amount,status:r.status,rawStatus:r.raw_status,caseStatus:r.case_status,confirmed:r.confirmed,pic:r.pic,picBluecharge:r.pic_bluecharge,approvalBy:r.approval_by,locationKey:r.location_key,duplicateType:r.duplicate_type,duplicateRows:r.duplicate_rows||[]});
+const embeddedData=()=>JSON.parse($('embeddedData').textContent);
+const REFUND_URL=SUPA_URL+'/rest/v1/cs_refund?select=section,source_row,tanggal,tanggal_raw,input_date,paid_date,location,reason,detail,amount,status,raw_status,case_status,confirmed,pic,pic_bluecharge,approval_by,location_key,duplicate_type,duplicate_rows&order=section.asc,source_row.asc';
+const SUPA_HEADERS={apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY};
+const loadAllRefund=async()=>{let out=[],off=0,step=1000;for(;;){const r=await fetch(REFUND_URL+'&limit='+step+'&offset='+off,{headers:SUPA_HEADERS});if(!r.ok)throw new Error('HTTP '+r.status);const chunk=await r.json();out=out.concat(chunk);if(chunk.length<step)break;off+=step;}return out;};
+loadAllRefund()
+ .then(rows=>rows&&rows.length?rows.map(mapRefund):embeddedData())
+ .catch(()=>embeddedData())
+ .then(d=>{
  data=d;
  populateLocations();
  const counts={};data.forEach(x=>counts[x.category]=(counts[x.category]||0)+1);
