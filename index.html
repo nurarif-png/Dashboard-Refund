@@ -379,7 +379,7 @@ details.more div{margin-top:4px;color:var(--ink-2);font-size:12.5px;line-height:
           <label class="field"><span>Sampai tanggal</span><input type="date" id="to"></label>
           <label class="field"><span id="locLabel">Lokasi</span><select id="location"><option value="">Semua lokasi</option></select></label>
           <label class="field"><span>Cek data ganda</span>
-            <select id="duplicates"><option value="">Semua data</option><option value="flagged">Berindikasi ganda</option><option value="exact">Baris identik</option><option value="possible">Potensi double input</option><option value="system">Trigger sistem (bukan duplikat)</option></select></label>
+            <select id="duplicates"><option value="">Semua data</option><option value="flagged">Berindikasi ganda</option><option value="exact">Baris identik</option><option value="possible">Potensi double input</option><option value="system">Trigger sistem (bukan duplikat)</option><option value="verified">Bukan duplikat (terverifikasi)</option></select></label>
         </div>
         <div id="rangeHint" style="margin-top:10px;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
       </div>
@@ -540,7 +540,7 @@ function render(){
  const dOf=x=>basis==='input'?(x.input||x.date||x.paid||null):(x[basis]||null);
  const catAll=data.filter(x=>x.category===category);
  filtered=catAll.filter(x=>(!$('location').value||x.locationKey===$('location').value)
-  &&(!$('duplicates').value||($('duplicates').value==='flagged'?DUP_TYPES.includes(x.duplicateType):$('duplicates').value==='exact'?x.duplicateType==='Baris identik':$('duplicates').value==='system'?x.duplicateType==='Trigger sistem':x.duplicateType==='Potensi double input'))
+  &&(!$('duplicates').value||($('duplicates').value==='flagged'?DUP_TYPES.includes(x.duplicateType):$('duplicates').value==='exact'?x.duplicateType==='Baris identik':$('duplicates').value==='system'?x.duplicateType==='Trigger sistem':$('duplicates').value==='verified'?x.duplicateType==='Bukan duplikat (verifikasi)':x.duplicateType==='Potensi double input'))
   &&(!y||dOf(x)?.slice(0,4)===y)&&(!m||dOf(x)?.slice(5,7)===m)&&(!from||dOf(x)&&dOf(x)>=from)&&(!to||dOf(x)&&dOf(x)<=to));
 
  $('title').textContent=category;$('crumb').textContent=category;
@@ -624,10 +624,11 @@ function render(){
  /* Duplicates */
  const flagged=filtered.filter(x=>DUP_TYPES.includes(x.duplicateType)),identical=flagged.filter(x=>x.duplicateType==='Baris identik');
  const sysRows=filtered.filter(x=>x.duplicateType==='Trigger sistem');
+ const verRows=filtered.filter(x=>x.duplicateType==='Bukan duplikat (verifikasi)');
  $('duplicateSummary').innerHTML=`<div class="dups">
   <div class="tile ${flagged.length?'flag':''}"><span>Baris berindikasi ganda</span><b>${num(flagged.length)}</b></div>
   <div class="tile"><span>Baris identik</span><b>${num(identical.length)}</b></div>
-  <div class="tile"><span>Potensi double input lainnya</span><b>${num(flagged.length-identical.length)}</b></div>${sysRows.length?`<div class="tile"><span>Trigger sistem (bukan duplikat)</span><b>${num(sysRows.length)}</b></div>`:''}</div>
+  <div class="tile"><span>Potensi double input lainnya</span><b>${num(flagged.length-identical.length)}</b></div>${sysRows.length?`<div class="tile"><span>Trigger sistem (bukan duplikat)</span><b>${num(sysRows.length)}</b></div>`:''}${verRows.length?`<div class="tile"><span>Bukan duplikat (sudah diverifikasi)</span><b>${num(verRows.length)}</b></div>`:''}</div>
   <div class="dupnotes"><div class="callout ${flagged.length?'warn':''}" style="margin-top:0">${ico(flagged.length?'alert':'info')}<div>${flagged.length?'Perlu verifikasi baris sumber yang ditandai. Jumlah ini menghitung semua baris terkait, bukan jumlah transaksi lebih.':'Tidak ditemukan indikasi berdasarkan aturan pemeriksaan pada filter ini. Ini bukan jaminan bebas duplikasi.'} Data tetap dihitung, belum ada baris yang dihapus atau nominal yang dikurangi.</div></div>
   <p>Nomor baris pembanding ada di kolom Data ganda pada tabel detail. Pemeriksaan dilakukan dalam masing-masing kategori.</p></div>
   <div class="dupfoot"><button class="btn sm" id="showFlagged" ${flagged.length?'':'disabled'}>Tampilkan baris ditandai</button></div>`;
