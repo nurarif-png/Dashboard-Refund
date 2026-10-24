@@ -711,26 +711,41 @@ const embeddedData=()=>JSON.parse($('embeddedData').textContent);
 const REFUND_URL=SUPA_URL+'/rest/v1/cs_refund?select=section,source_row,tanggal,tanggal_raw,input_date,paid_date,location,reason,detail,amount,status,raw_status,case_status,confirmed,pic,pic_bluecharge,approval_by,location_key,duplicate_type,duplicate_rows&order=section.asc,source_row.asc';
 const SUPA_HEADERS={apikey:SUPA_KEY,Authorization:'Bearer '+SUPA_KEY};
 const loadAllRefund=async()=>{let out=[],off=0,step=1000;for(;;){const r=await fetch(REFUND_URL+'&limit='+step+'&offset='+off,{headers:SUPA_HEADERS});if(!r.ok)throw new Error('HTTP '+r.status);const chunk=await r.json();out=out.concat(chunk);if(chunk.length<step)break;off+=step;}return out;};
-loadAllRefund()
- .then(rows=>rows&&rows.length?rows.map(mapRefund):embeddedData())
- .catch(()=>embeddedData())
- .then(d=>{
- data=d;
- populateLocations();
- const counts={};data.forEach(x=>counts[x.category]=(counts[x.category]||0)+1);
- $('nav').innerHTML=cats.map((c,i)=>`<button class="navitem ${i===0?'active':''}" data-cat="${esc(c.name)}">${ico(c.icon)}<span class="navname">${esc(c.name)}</span><span class="navcount">${num(counts[c.name]||0)}</span></button>`).join('');
- hydrateIcons($('nav'));
- $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{
-  category=b.dataset.cat;populateLocations();page=0;
-  $('nav').querySelectorAll('button').forEach(z=>z.classList.toggle('active',z===b));
-  for(const id of ['year','month','from','to','status','search','location','duplicates'])$(id).value='';$('basis').value='input';
-  render();closeNav();window.scrollTo({top:0,behavior:'smooth'});
- });
- const years=[...new Set(data.flatMap(x=>[x.date,x.input,x.paid].filter(Boolean).map(d=>d.slice(0,4))))].sort().reverse();
- $('year').innerHTML+=years.map(y=>`<option>${y}</option>`).join('');
- $('month').innerHTML+=months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
- render();spy();
-}).catch(()=>{$('scope').innerHTML=ico('alert')+'<div>Data gagal dimuat. Muat ulang halaman untuk mencoba kembali.</div>';hydrateIcons()});
+/* Boot: gambar snapshot dulu (biar tidak kosong saat jaringan lambat), lalu upgrade ke data live */
+let booted=false;
+const badge=document.querySelector('.snap');
+function initUI(rows,isLive){
+ data=rows||[];
+ if(!booted){
+  booted=true;
+  populateLocations();
+  const counts={};data.forEach(x=>counts[x.category]=(counts[x.category]||0)+1);
+  $('nav').innerHTML=cats.map((c,i)=>`<button class="navitem ${i===0?'active':''}" data-cat="${esc(c.name)}">${ico(c.icon)}<span class="navname">${esc(c.name)}</span><span class="navcount">${num(counts[c.name]||0)}</span></button>`).join('');
+  hydrateIcons($('nav'));
+  $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{
+   category=b.dataset.cat;populateLocations();page=0;
+   $('nav').querySelectorAll('button').forEach(z=>z.classList.toggle('active',z===b));
+   for(const id of ['year','month','from','to','status','search','location','duplicates'])$(id).value='';$('basis').value='input';
+   render();closeNav();window.scrollTo({top:0,behavior:'smooth'});
+  });
+  const years=[...new Set(data.flatMap(x=>[x.date,x.input,x.paid].filter(Boolean).map(d=>d.slice(0,4))))].sort().reverse();
+  $('year').innerHTML+=years.map(y=>`<option>${y}</option>`).join('');
+  $('month').innerHTML+=months.map((m,i)=>`<option value="${String(i+1).padStart(2,'0')}">${m}</option>`).join('');
+ }else{
+  populateLocations();
+  const counts={};data.forEach(x=>counts[x.category]=(counts[x.category]||0)+1);
+  $('nav').querySelectorAll('button').forEach(b=>{const n=b.querySelector('.navcount');if(n)n.textContent=num(counts[b.dataset.cat]||0)});
+ }
+ if(badge)badge.textContent=isLive?'Live · Supabase · Auto-sync 17:25 WIB':'Snapshot 17 Okt 2026';
+ try{render();spy()}catch(e){console.error('render gagal',e)}
+}
+const withTimeout=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error('timeout '+ms+'ms')),ms))]);
+try{initUI(embeddedData(),false)}catch(e){
+ $('scope').innerHTML=ico('alert')+'<div>Data tidak dapat dimuat. Muat ulang halaman.</div>';hydrateIcons();
+}
+withTimeout(loadAllRefund(),15000)
+ .then(rows=>{if(rows&&rows.length)initUI(rows.map(mapRefund),true)})
+ .catch(e=>console.warn('data live gagal dimuat, pakai snapshot:',e&&e.message));
 </script>
 </body>
 </html>
