@@ -372,15 +372,16 @@ details.more div{margin-top:4px;color:var(--ink-2);font-size:12.5px;line-height:
         </div>
         <div class="filters">
           <label class="field wide"><span>Basis tanggal</span>
-            <select id="basis"><option value="date">Tanggal transaksi / pengajuan</option><option value="input">Tanggal input</option><option value="paid">Tanggal proses refund</option></select></label>
+            <select id="basis"><option value="input" selected>Tanggal pengajuan refund</option><option value="date">Tanggal transaksi</option><option value="paid">Tanggal proses refund</option></select></label>
           <label class="field"><span>Tahun</span><select id="year"><option value="">Semua tahun</option></select></label>
           <label class="field"><span>Bulan</span><select id="month"><option value="">Semua bulan</option></select></label>
           <label class="field"><span>Dari tanggal</span><input type="date" id="from"></label>
           <label class="field"><span>Sampai tanggal</span><input type="date" id="to"></label>
           <label class="field"><span id="locLabel">Lokasi</span><select id="location"><option value="">Semua lokasi</option></select></label>
           <label class="field"><span>Cek data ganda</span>
-            <select id="duplicates"><option value="">Semua data</option><option value="flagged">Berindikasi ganda</option><option value="exact">Baris identik</option><option value="possible">Potensi double input</option></select></label>
+            <select id="duplicates"><option value="">Semua data</option><option value="flagged">Berindikasi ganda</option><option value="exact">Baris identik</option><option value="possible">Potensi double input</option><option value="system">Trigger sistem (bukan duplikat)</option></select></label>
         </div>
+        <div id="rangeHint" style="margin-top:10px;font-size:12px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap"></div>
       </div>
 
       <div class="kpis" id="kpis"></div>
@@ -534,19 +535,26 @@ function niceStep(x){const p=10**Math.floor(Math.log10(Math.max(1,x)));for(const
 
 function render(){
  const basis=$('basis').value,y=$('year').value,m=$('month').value,from=$('from').value,to=$('to').value;
+ const DUP_TYPES=['Baris identik','Potensi double input'];
+ /* basis input = tanggal pengajuan refund; baris lama tanpa Tgl Input jatuh ke tanggal transaksi */
+ const dOf=x=>basis==='input'?(x.input||x.date||x.paid||null):(x[basis]||null);
  const catAll=data.filter(x=>x.category===category);
  filtered=catAll.filter(x=>(!$('location').value||x.locationKey===$('location').value)
-  &&(!$('duplicates').value||($('duplicates').value==='flagged'?!!x.duplicateType:$('duplicates').value==='exact'?x.duplicateType==='Baris identik':x.duplicateType==='Potensi double input'))
-  &&(!y||x[basis]?.slice(0,4)===y)&&(!m||x[basis]?.slice(5,7)===m)&&(!from||x[basis]&&x[basis]>=from)&&(!to||x[basis]&&x[basis]<=to));
+  &&(!$('duplicates').value||($('duplicates').value==='flagged'?DUP_TYPES.includes(x.duplicateType):$('duplicates').value==='exact'?x.duplicateType==='Baris identik':$('duplicates').value==='system'?x.duplicateType==='Trigger sistem':x.duplicateType==='Potensi double input'))
+  &&(!y||dOf(x)?.slice(0,4)===y)&&(!m||dOf(x)?.slice(5,7)===m)&&(!from||dOf(x)&&dOf(x)>=from)&&(!to||dOf(x)&&dOf(x)<=to));
 
  $('title').textContent=category;$('crumb').textContent=category;
  $('scope').innerHTML=ico('info')+'<div>'+esc(notes[category])+'</div>';
 
- const active=['year','month','from','to','location','duplicates'].filter(id=>$(id).value).length+($('basis').value!=='date'?1:0);
+ const active=['year','month','from','to','location','duplicates'].filter(id=>$(id).value).length+($('basis').value!=='input'?1:0);
  $('activeCount').textContent=active?active+' filter aktif':'Tanpa filter';
  $('activeCount').classList.toggle('on',!!active);
  $('reset').disabled=!active;
  $('resultLine').textContent=`${num(filtered.length)} dari ${num(catAll.length)} kasus`;
+ {const ds=filtered.map(dOf).filter(Boolean).sort();const fi=ds.length?ds[0].split('-').reverse().join('/'):'-',la=ds.length?ds[ds.length-1].split('-').reverse().join('/'):'-';
+  const noIn=filtered.filter(x=>!dOf(x)).length;
+  $('rangeHint').innerHTML=ico('info')+`<span>Rentang ${basis==='input'?'tanggal pengajuan':basis==='paid'?'tanggal proses':'tanggal transaksi'}: <b>${fi}</b> – <b>${la}</b>${noIn?` · ${num(noIn)} baris tanpa tanggal (tidak masuk rentang)`:''}</span>`;
+  hydrateIcons($('rangeHint'));}
 
  /* KPI */
  const closed=filtered.filter(x=>x.status==='Closed').length,
@@ -577,7 +585,7 @@ function render(){
 
  /* Trend */
  const groups={};
- for(const x of filtered){if(!x[basis])continue;const k=x[basis].slice(0,7);groups[k]??={c:0,p:0};if(x.status==='Closed')groups[k].c++;else if(x.status!=='Tidak direfund')groups[k].p++}
+ for(const x of filtered){if(!dOf(x))continue;const k=dOf(x).slice(0,7);groups[k]??={c:0,p:0};if(x.status==='Closed')groups[k].c++;else if(x.status!=='Tidak direfund')groups[k].p++}
  const keys=Object.keys(groups).sort(),mx=Math.max(1,...keys.map(k=>groups[k].c+groups[k].p)),step=niceStep(Math.ceil(mx/4)),top=step*4;
  $('yaxis').innerHTML=[0,1,2,3,4].map(i=>`<span style="bottom:calc(32px + var(--area) * ${i/4})">${num(step*i)}</span>`).join('');
  if(keys.length){
@@ -634,15 +642,15 @@ function pageList(cur,total){
 }
 
 function renderTable(){
- const q=$('search').value.toLowerCase(),s=$('status').value,basis=$('basis').value;
+ const q=$('search').value.toLowerCase(),s=$('status').value,basis=$('basis').value;const dOf=x=>basis==='input'?(x.input||x.date||x.paid||null):(x[basis]||null);
  detail=filtered.filter(x=>(!s||x.status===s)&&(!q||[x.location,x.reason,x.detail,x.pic,x.picBluecharge,x.approvalBy,x.row,x.duplicateType,x.duplicateRows.join('; ')].join(' ').toLowerCase().includes(q)))
-  .sort((a,b)=>(b[basis]||'').localeCompare(a[basis]||''));
+  .sort((a,b)=>(dOf(b)||'').localeCompare(dOf(a)||''));
  const pages=Math.max(1,Math.ceil(detail.length/pageSize));
  page=Math.min(page,pages-1);
  const startIdx=page*pageSize,slice=detail.slice(startIdx,startIdx+pageSize);
  $('count').textContent=`${num(detail.length)} kasus sesuai filter dan pencarian`;
  $('rows').innerHTML=slice.map(x=>{
-  const d=x[basis]?esc(x[basis].split('-').reverse().join('/')):'<span class="na-t">Tidak valid / kosong</span>';
+  const d=dOf(x)?esc(dOf(x).split('-').reverse().join('/')):'<span class="na-t">Tidak valid / kosong</span>';
   const ev=x.category==='Refund EV to Bluecharge';
   return `<tr>
    <td class="date">${d}</td>
@@ -667,7 +675,7 @@ for(const id of ['basis','year','month','from','to','location','duplicates'])$(i
 for(const id of ['status','search'])$(id).oninput=()=>{page=0;renderTable()};
 $('pageSize').onchange=e=>{pageSize=+e.target.value;page=0;renderTable()};
 $('pager').onclick=e=>{const b=e.target.closest('button[data-p]');if(!b||b.disabled)return;page=+b.dataset.p;renderTable();$('sec-detail').scrollIntoView({behavior:'smooth'})};
-$('reset').onclick=()=>{for(const id of ['year','month','from','to','status','search','location','duplicates'])$(id).value='';$('basis').value='date';page=0;render()};
+$('reset').onclick=()=>{for(const id of ['year','month','from','to','status','search','location','duplicates'])$(id).value='';$('basis').value='input';page=0;render()};
 
 /* Sidebar drawer (mobile) */
 const closeNav=()=>document.body.classList.remove('navopen');
@@ -713,7 +721,7 @@ loadAllRefund()
  $('nav').querySelectorAll('button').forEach(b=>b.onclick=()=>{
   category=b.dataset.cat;populateLocations();page=0;
   $('nav').querySelectorAll('button').forEach(z=>z.classList.toggle('active',z===b));
-  for(const id of ['year','month','from','to','status','search','location','duplicates'])$(id).value='';$('basis').value='date';
+  for(const id of ['year','month','from','to','status','search','location','duplicates'])$(id).value='';$('basis').value='input';
   render();closeNav();window.scrollTo({top:0,behavior:'smooth'});
  });
  const years=[...new Set(data.flatMap(x=>[x.date,x.input,x.paid].filter(Boolean).map(d=>d.slice(0,4))))].sort().reverse();
